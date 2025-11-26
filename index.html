@@ -1,91 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Smart Product Scanner</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Scanner</title>
 
   <style>
     body {
       margin: 0;
       background: #000;
-      overflow: hidden;
-      font-family: Arial, sans-serif;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
       color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
     }
 
-    video {
-      position: absolute;
+    #video {
       width: 100%;
-      height: 100%;
+      height: 100vh;
       object-fit: cover;
-      top: 0;
-      left: 0;
     }
 
-    #scanner-frame {
-      border: 5px solid #00eaff;
-      width: 75vw;
-      height: 75vw;
-      max-width: 420px;
-      max-height: 420px;
+    #frame {
+      border: 5px solid cyan;
+      width: 70vw;
+      height: 70vw;
       border-radius: 20px;
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      box-shadow: 0 0 30px #00eaff;
+      box-shadow: 0 0 25px cyan;
     }
 
     #status {
       position: absolute;
-      bottom: 4vh;
+      bottom: 20px;
       width: 100%;
-      text-align: center;
       font-size: 22px;
     }
   </style>
 
-  <script src="https://unpkg.com/@zxing/library@0.18.6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.1"></script>
 </head>
 
 <body>
 
   <video id="video" autoplay></video>
-  <div id="scanner-frame"></div>
+  <div id="frame"></div>
   <div id="status">Requesting camera…</div>
 
   <script>
-    async function startScanner() {
-      const codeReader = new ZXing.BrowserBarcodeReader();
+    async function start() {
+      const codeReader = new ZXing.BrowserMultiFormatReader();
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" }
         });
 
-        document.getElementById("video").srcObject = stream;
+        const video = document.getElementById("video");
+        video.srcObject = stream;
+
         document.getElementById("status").innerText = "Scanning…";
 
-        codeReader.decodeOnceFromVideoDevice(undefined, "video")
-          .then(result => {
+        codeReader.decodeFromVideoDevice(null, "video", (result, err) => {
+          if (result) {
             window.location.href = "product.html?code=" + result.text;
-          })
-          .catch(err => {
-            document.getElementById("status").innerText = "Unable to scan. Try again.";
-          });
+          }
+        });
 
-      } catch (err) {
-        document.getElementById("status").innerText = 
+      } catch (e) {
+        document.getElementById("status").innerText =
           "Camera blocked. Enable permission in browser settings.";
       }
     }
 
-    window.onload = startScanner;
+    window.onload = start;
   </script>
 
 </body>
