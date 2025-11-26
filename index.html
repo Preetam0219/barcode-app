@@ -1,134 +1,94 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Smart Product Scanner</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Scanner</title>
   <style>
     body {
       margin: 0;
-      font-family: 'Poppins', sans-serif;
-      background: black;
+      font-family: Arial, sans-serif;
+      background: #000;
+      color: white;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+    }
+
+    #scanner-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
       overflow: hidden;
     }
 
-    /* Fullscreen Permission Overlay */
-    #permissionOverlay {
-      position: fixed;
-      top: 0;
-      left: 0;
+    video {
       width: 100vw;
       height: 100vh;
-      background: white;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 30px;
-      z-index: 20;
-      text-align: center;
+      object-fit: cover;
     }
 
-    #permissionOverlay h1 {
-      font-size: 30px;
-      margin-bottom: 20px;
-      color: #003566;
-    }
-
-    #permissionOverlay p {
-      font-size: 22px;
-      color: #555;
-      margin-bottom: 30px;
-    }
-
-    #allowBtn {
-      background: #004aad;
-      color: white;
-      padding: 18px 35px;
-      font-size: 24px;
-      border-radius: 14px;
-      border: none;
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    #reader {
-      width: 100vw;
-      height: 100vh;
-      position: fixed;
-      top: 0;
-      left: 0;
-      display: none;
-    }
-
-    #scan-frame {
-      position: fixed;
+    .frame {
+      position: absolute;
       top: 50%;
       left: 50%;
-      width: 75vw;
-      height: 75vw;
+      width: 65vw;
+      height: 65vw;
+      border: 6px solid rgba(0, 255, 255, 0.9);
+      border-radius: 20px;
       transform: translate(-50%, -50%);
-      border: 6px solid #7df9ff;
-      border-radius: 22px;
-      box-shadow: 0 0 30px #7df9ff;
-      z-index: 10;
-      display: none;
+      box-shadow: 0 0 25px cyan;
+    }
+
+    #loadingText {
+      position: absolute;
+      bottom: 30px;
+      width: 100%;
+      text-align: center;
+      font-size: 22px;
+      color: #fff;
+      opacity: 0.8;
     }
   </style>
+
+  <script src="https://unpkg.com/@zxing/library@0.18.6"></script>
 </head>
 
 <body>
 
-<!-- Camera Permission Screen -->
-<div id="permissionOverlay">
-  <h1>Camera Access Needed</h1>
-  <p>To scan product barcodes, please allow camera access on the next popup.</p>
-  <button id="allowBtn">ALLOW CAMERA</button>
+<div id="scanner-container">
+  <video id="video" autoplay></video>
+  <div class="frame"></div>
+  <div id="loadingText">Opening Camera…</div>
 </div>
 
-<!-- Scanner -->
-<div id="reader"></div>
-<div id="scan-frame"></div>
-
 <script>
-// Database
-const db = [
-  { barcode: "89010010000011", product: "Lays Classic Salted 50g", mfg: "2025-11-01", exp: "2026-02-01", price: 20 },
-  { barcode: "89010010000028", product: "Dairy Milk 20g", mfg: "2025-10-12", exp: "2026-04-12", price: 10 },
-  { barcode: "89010010000035", product: "Parle-G 100g", mfg: "2025-11-10", exp: "2026-05-10", price: 15 },
-  { barcode: "89010010000042", product: "Red Bull 250ml", mfg: "2025-11-05", exp: "2026-05-05", price: 115 },
-  { barcode: "89010010000059", product: "Pepsi 500ml", mfg: "2025-11-08", exp: "2026-03-08", price: 40 },
-  { barcode: "89010010000066", product: "Britannia Bread", mfg: "2025-11-22", exp: "2025-11-29", price: 30 },
-  { barcode: "89010010000073", product: "Nestle Milk 1L", mfg: "2025-11-01", exp: "2025-12-01", price: 70 },
-  { barcode: "89010010000080", product: "Amul Butter 100g", mfg: "2025-10-15", exp: "2026-01-15", price: 55 },
-  { barcode: "89010010000097", product: "Maggie Noodles 70g", mfg: "2025-09-20", exp: "2026-03-20", price: 14 },
-  { barcode: "89010010000103", product: "Coke Zero 300ml", mfg: "2025-11-12", exp: "2026-04-12", price: 35 }
-];
+  async function startScanner() {
+    const codeReader = new ZXing.BrowserBarcodeReader();
 
-// Start Scanner Function
-function startScanner() {
-  document.getElementById("permissionOverlay").style.display = "none";
-  document.getElementById("reader").style.display = "block";
-  document.getElementById("scan-frame").style.display = "block";
+    try {
+      // Ask for camera automatically
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      document.getElementById("video").srcObject = stream;
 
-  let scanner = new Html5Qrcode("reader");
+      document.getElementById("loadingText").innerText = "Scanning…";
 
-  scanner.start(
-    { facingMode: "environment" },
-    { fps: 10, qrbox: { width: 300, height: 300 } },
-    (decoded) => {
-      let item = db.find(x => x.barcode === decoded);
-      if (!item) { alert("Item not found"); return; }
+      codeReader.decodeOnceFromVideoDevice(undefined, 'video')
+        .then(result => {
+          window.location.href = product.html?code=${result.text};
+        })
+        .catch(err => {
+          alert("Error: " + err);
+        });
 
-      window.location.href =
-        product.html?name=${encodeURIComponent(item.product)}&mfg=${item.mfg}&exp=${item.exp}&price=${item.price};
+    } catch (err) {
+      document.getElementById("loadingText").innerText = 
+        "Camera blocked! Please enable camera permission in browser settings.";
     }
-  );
-}
+  }
 
-// Button click event
-document.getElementById("allowBtn").addEventListener("click", startScanner);
+  // Auto-run on load
+  window.onload = () => startScanner();
 </script>
 
 </body>
