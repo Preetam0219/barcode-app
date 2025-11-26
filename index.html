@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Smart Product Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: black;
+      overflow: hidden;
+    }
+
+    /* Fullscreen scanner */
+    #reader {
+      width: 100vw;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    /* PhonePe style frame */
+    #scan-frame {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 70vw;
+      height: 70vw;
+      transform: translate(-50%, -50%);
+      border: 4px solid #7df9ff;
+      border-radius: 20px;
+      box-shadow: 0 0 20px #7df9ff;
+      z-index: 3;
+    }
+
+    /* Result card */
+    #resultCard {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: white;
+      padding: 20px;
+      border-top-left-radius: 20px;
+      border-top-right-radius: 20px;
+      box-shadow: 0 -5px 20px rgba(0,0,0,0.4);
+      z-index: 5;
+      display: none;
+    }
+
+    .label {
+      font-size: 22px;
+      font-weight: 600;
+      color: #004aad;
+    }
+
+    .value {
+      font-size: 22px;
+      font-weight: 500;
+      color: #222;
+    }
+
+    #freshness {
+      margin-top: 10px;
+      padding: 12px;
+      font-size: 20px;
+      font-weight: 600;
+      color: white;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    #closeBtn {
+      background: #004aad;
+      color: white;
+      padding: 15px;
+      border: none;
+      font-size: 20px;
+      width: 100%;
+      border-radius: 14px;
+      margin-top: 20px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div id="reader"></div>
+<div id="scan-frame"></div>
+
+<!-- Result card -->
+<div id="resultCard">
+  <p><span class="label">Product:</span> <span class="value" id="pname"></span></p>
+  <p><span class="label">MFG:</span> <span class="value" id="pmfg"></span></p>
+  <p><span class="label">EXP:</span> <span class="value" id="pexp"></span></p>
+  <p><span class="label">Price:</span> ₹<span class="value" id="pprice"></span></p>
+
+  <div id="freshness"></div>
+
+  <button id="closeBtn" onclick="restartScan()">SCAN AGAIN</button>
+</div>
+
+
+<script>
+// Database
+const db = [
+  { barcode: "89010010000011", product: "Lays Classic Salted 50g", mfg: "2025-11-01", exp: "2026-02-01", price: 20 },
+  { barcode: "89010010000028", product: "Dairy Milk 20g", mfg: "2025-10-12", exp: "2026-04-12", price: 10 },
+  { barcode: "89010010000035", product: "Parle-G 100g", mfg: "2025-11-10", exp: "2026-05-10", price: 15 },
+  { barcode: "89010010000042", product: "Red Bull 250ml", mfg: "2025-11-05", exp: "2026-05-05", price: 115 },
+  { barcode: "89010010000059", product: "Pepsi 500ml", mfg: "2025-11-08", exp: "2026-03-08", price: 40 },
+  { barcode: "89010010000066", product: "Britannia Bread", mfg: "2025-11-22", exp: "2025-11-29", expSoon: true, price: 30 },
+  { barcode: "89010010000073", product: "Nestle Milk 1L", mfg: "2025-11-01", exp: "2025-12-01", price: 70 },
+  { barcode: "89010010000080", product: "Amul Butter 100g", mfg: "2025-10-15", exp: "2026-01-15", price: 55 },
+  { barcode: "89010010000097", product: "Maggie Noodles 70g", mfg: "2025-09-20", exp: "2026-03-20", price: 14 },
+  { barcode: "89010010000103", product: "Coke Zero 300ml", mfg: "2025-11-12", exp: "2026-04-12", price: 35 }
+];
+
+function getFreshness(exp) {
+  const today = new Date();
+  const expiry = new Date(exp);
+  const days = Math.ceil((expiry - today) / (1000*60*60*24));
+
+  if (days < 0) return { text: "⚫ EXPIRED", color: "black" };
+  if (days <= 29) return { text: "🔴 EXPIRING SOON", color: "#d90429" };
+  if (days <= 59) return { text: "🟡 FRESH", color: "#f4a261" };
+  return { text: "🟢 VERY FRESH", color: "#2a9d8f" };
+}
+
+function onScanSuccess(code) {
+  let item = db.find(x => x.barcode === code);
+
+  if (!item) {
+    alert("Item not found");
+    return;
+  }
+
+  document.getElementById("pname").innerText = item.product;
+  document.getElementById("pmfg").innerText = item.mfg;
+  document.getElementById("pexp").innerText = item.exp;
+  document.getElementById("pprice").innerText = item.price;
+
+  let f = getFreshness(item.exp);
+  let box = document.getElementById("freshness");
+  box.innerText = f.text;
+  box.style.background = f.color;
+
+  document.getElementById("resultCard").style.display = "block";
+}
+
+let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 350 });
+scanner.render(onScanSuccess);
+
+function restartScan() {
+  location.reload();
+}
+</script>
+
+</body>
+</html>
